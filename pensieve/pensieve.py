@@ -151,10 +151,25 @@ class Doc(object):
         if not self._paragraphs:
             print('Generating paragraphs for doc '+str(self.id))
             self._paragraphs = []
-            for i, p in enumerate(self.text.split('\n')):
-                if len(p.split(' ')) < 30:
+            line_list = self.text.split('\n')
+            myIterator = iter(enumerate(line_list))
+            tuple = next(myIterator, None)
+            while tuple is not None:
+                i, line = tuple
+                if len(line.strip()) == 0:
+                    pass
+                elif len(line.split(' ')) >= 25:
+                    self._paragraphs.append(Paragraph(line, i, self))
+                else:
+                    chunk = ""
+                    while (tuple is not None) and (len(line.split(' ')) < 25 or line[0] == "'" or line[0] == '"'):
+                        chunk = chunk + "\n" + line
+                        tuple = next(myIterator, None)
+                        if tuple is not None:
+                            i, line = tuple
+                    self._paragraphs.append(Paragraph(chunk, i, self))
                     continue
-                self._paragraphs.append(Paragraph(p, i, self))
+                tuple = next(myIterator, None)
         return self._paragraphs
 
     @property
@@ -168,6 +183,13 @@ class Doc(object):
             for par in self.paragraphs:
                 for key in self._words:
                     self._words[key] += par.words[key]
+            for key in self.words['people']:
+                # people are not places
+                if (2.5)*(self.words['people'][key]) > self.words['places'][key]:
+                    del self.words['places'][key]
+                # people are not things
+                if self.words['people'][key] > 5:
+                    del self.words['things'][key]
         return self._words
 
     def find_character_paragraphs(self, char_name, density_cut=0.8):
@@ -293,6 +315,9 @@ class Paragraph(object):
             # Exclude words too short to be names and strange characters
             if len(name.text) < 3:
                 continue
+            # objects should not be people
+            if (name.doc[name.start - 1].text == 'the') or (name.doc[name.start - 1].text == 'a') or (name.doc[name.start - 1].text == 'an'):
+                continue
             # Handle possessives
             if name.text[-2] not in string.ascii_lowercase:
                 names.append(name.text[:-2])
@@ -308,8 +333,7 @@ class Paragraph(object):
         include_types = ['LOC', 'GPE', 'FACILITY']
         for place in textacy.extract.named_entities(self.spacy_doc,
                                                 include_types=include_types):
-            if place.text != 'Hagrid':
-                places.append(place.text)
+            places.append(place.text)
         return places
 
     def extract_things(self):
@@ -321,12 +345,12 @@ class Paragraph(object):
         things = []
         for obj in textacy.extract.named_entities(self.spacy_doc,
                                                   include_types=include_types):
-            things.append(obj)
+            things.append(obj.text.strip())
         # Get noun chunks
         for nch in textacy.extract.noun_chunks(self.spacy_doc, drop_determiners=True):
             if len(nch) == 1 and nch[0].pos == spacy.parts_of_speech.PRON:
                 continue
-            things.append(nch)
+            things.append(nch.text.strip())
         return things
 
     def extract_mood_words(self):
