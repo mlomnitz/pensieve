@@ -300,6 +300,18 @@ class Paragraph(object):
                 verbs.append(text)
         return verbs
 
+    def extract_narrative(self):
+        """
+        Extract memory narrative using the identified important activities and noun chunks from the paragraph
+        """
+        this_para = textacy.Doc(self.text, lang='en')
+        narrative_dict = set()
+        for noun in textacy.extract.noun_chunks(this_para):
+            for verb in self.words['activities']:
+                for state in textacy.extract.semistructured_statements(this_para,noun.text,verb):
+                    narrative_dict.add( state )
+        return narrative_dict
+
     def extract_people(self):
         """
         Extract names in paragraph
@@ -457,9 +469,12 @@ class Paragraph(object):
         mem_places = self.extract_places()
         mem_things = self.extract_things()
         mem_activities = self.extract_activities(n_verbs)
+        mem_narrative = self.extract_narrative()
+
         culled_output = {'people': mem_people,
                          'places': mem_places,
                          'activities': mem_activities,
+                         'narrative':mem_narrative,
                          'things': mem_things}
         return culled_output
 
