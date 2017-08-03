@@ -6,6 +6,7 @@ import string
 from .json_dump import dump_mem_to_json
 import json
 from collections import Counter
+from collections import defaultdict
 import pandas
 import numpy
 
@@ -144,7 +145,7 @@ class Doc(object):
         self._words = None
         # Hardcoded path to book_emo.h5 file. Method to generate this file needs to be implemented
         # in extract_mood_words
-        self.mood_weights = pandas.read_hdf('hp_corpus/book_emo.h5',key='book'+str(self.id+1))
+        self.mood_weights = pandas.read_hdf('./../hp_corpus/book_emo.h5',key='book'+str(self.id+1))
 
     @property
     def paragraphs(self):
@@ -357,13 +358,15 @@ class Paragraph(object):
         """
         Extract the mood/emotion of the paragraph using EMO-Lexicon
         """
+        
         pass
 
     def extract_mood_weights(self):
         """
         Extract normalized paragraph mood weights from h5 file
         """
-        para_emotions = self.mood_weights.iloc[self.id]
+        print(self.id, len(self.doc.mood_weights))
+        para_emotions = self.doc.mood_weights.iloc[self.id]
         norm = numpy.sum( para_emotions )
         return dict(para_emotions/norm)
 
@@ -376,7 +379,8 @@ class Paragraph(object):
                       'people': Counter(),
                       'places': Counter(),
                       'things': Counter(),
-                      'activities': Counter()}
+                      'activities': Counter(),
+                      'moods': defaultdict()}
         for time in self.extract_times():
             words_dict['times'][time] += 1
         for name in self.extract_people():
@@ -393,7 +397,7 @@ class Paragraph(object):
             words_dict['things'][thing] += 1
         for verb in self.extract_activities():
             words_dict['activities'][verb] += 1
-        words_dict['moods'].append(self.extract_mood_weights()) 
+        words_dict['moods'].update(self.extract_mood_weights()) 
         return words_dict
 
     # def sanitize_places_and_objects(self, freq_cut=100):
